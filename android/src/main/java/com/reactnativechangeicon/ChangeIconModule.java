@@ -7,6 +7,7 @@ import android.app.Application;
 import android.content.pm.PackageManager;
 import android.content.ComponentName;
 import android.os.Bundle;
+import android.content.Intent;
 
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactApplicationContext;
@@ -14,20 +15,22 @@ import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.module.annotations.ReactModule;
 
-import java.util.HashSet;
-import java.util.Set;
+import java.util.ArrayList;
+import java.util.List;
 
 @ReactModule(name = "ChangeIcon")
 public class ChangeIconModule extends ReactContextBaseJavaModule implements Application.ActivityLifecycleCallbacks {
     public static final String NAME = "ChangeIcon";
     private final String packageName;
-    private final Set<String> classesToKill = new HashSet<>();
+    private final List<String> classesToKill = new ArrayList<>();
     private Boolean iconChanged = false;
     private String componentClass = "";
+    private ReactApplicationContext reactContext;
 
     public ChangeIconModule(ReactApplicationContext reactContext, String packageName) {
         super(reactContext);
         this.packageName = packageName;
+        this.reactContext = reactContext;
     }
 
     @Override
@@ -91,6 +94,10 @@ public class ChangeIconModule extends ReactContextBaseJavaModule implements Appl
         this.componentClass = activeClass;
         activity.getApplication().registerActivityLifecycleCallbacks(this);
         iconChanged = true;
+        activity.finish();
+         Intent newIconIntent = Intent.makeMainActivity(new ComponentName(this.packageName, activeClass));
+        newIconIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        this.reactContext.startActivity(newIconIntent);
     }
 
     private void completeIconChange() {
@@ -99,8 +106,6 @@ public class ChangeIconModule extends ReactContextBaseJavaModule implements Appl
         final Activity activity = getCurrentActivity();
         if (activity == null)
             return;
-        
-        classesToKill.remove(componentClass);
         classesToKill.forEach((cls) -> activity.getPackageManager().setComponentEnabledSetting(
                 new ComponentName(this.packageName, cls),
                 PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
